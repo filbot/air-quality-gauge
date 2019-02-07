@@ -1,11 +1,15 @@
 #include <ArduinoJson.h>
 #include <WiFiManager.h>
 #include <WiFiClient.h>
-#include "config.h"
+#include "config.h" // where the api endpoint including key is stored
 
 WiFiClient client;
 
-int GaugePin = 4;
+int GaugePin = 4; // Physical pin location on ESP2866 is D2
+
+// airnowapi.org api only allows for 500 requests per hour
+const int api_mtbs = 300000; // mean time between api requests set to 5 minutes
+long api_lasttime = 0;   // last time api request has been done
 
 void setup() {
   // Initialize Serial port
@@ -18,11 +22,15 @@ void setup() {
   wifiManager.autoConnect("AutoConnectAP");
   Serial.println("WiFi connected");
 
+  // First run
   getAirQualityData();
 }
 
 void loop() {
-  // not used in this example
+  if ((millis() > api_lasttime + api_mtbs))  {
+    getAirQualityData();
+    api_lasttime = millis();
+  }
 }
 
 void getAirQualityData() {
@@ -33,7 +41,7 @@ void getAirQualityData() {
     return;
   }
 
-  Serial.println(F("Connected to airnowapi.org!"));
+  Serial.println(F("Connected to airnowapi.org"));
 
   // Send HTTP request
   client.println(API_REQUEST); //string: url and api key for host endpoint
@@ -61,7 +69,7 @@ void getAirQualityData() {
   }
 
   // Allocate JsonBuffer
-  // Use arduinojson.org/assistant to compute the capacity.
+  // Used arduinojson.org/assistant to compute the capacity.
   const size_t capacity = JSON_ARRAY_SIZE(3) + 3 * JSON_OBJECT_SIZE(2) + 3 * JSON_OBJECT_SIZE(10);
   DynamicJsonBuffer jsonBuffer(capacity);
 
@@ -72,14 +80,17 @@ void getAirQualityData() {
     return;
   }
 
-  // Extract values
-  Serial.println(F("Response:"));
+  // Extract raw value
+  Serial.println(F("Raw value:"));
   Serial.println(root[0]["AQI"].as<char*>());
-//  int AQI = root[0]["AQI"];
-  int AQI = 250;
+
+  // Map raw value to 32bit resolution scale
+  int AQI = root[0]["AQI"];
   int val = map(AQI, 0, 500, 0, 1023);
-  Serial.println(F("val response:"));
+  Serial.println(F("Mapped value:"));
   Serial.println(val);
+
+  // Set gauge
   analogWrite(GaugePin, val);
 
   // Disconnect
