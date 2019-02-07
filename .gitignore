@@ -1,0 +1,2 @@
+# Arduino config file containing sensative data (ie: api keys)
+config.h
