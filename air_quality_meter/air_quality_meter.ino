@@ -86,7 +86,7 @@ void getAirQualityData() {
 
   // Map raw value to 32bit resolution scale
   int AQI = root[0]["AQI"];
-  int val = map(AQI, 0, 500, 0, 1023);
+  int val = map(AQI, 0, 500, 5, 35);
   Serial.println(F("Mapped value:"));
   Serial.println(val);
 
